@@ -1,0 +1,255 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+:root {
+  /* Light theme colors */
+  --color-primary: #fefefe;
+  --color-secondary: #262625;
+  --color-accent: #e0414f;
+  --color-background: #fefefe;
+  --color-foreground: #262625;
+  --color-surface: #fefefe;
+  --color-muted: #7a7974;
+  --color-border: #262625;
+  --color-hover: #f8f8f8;
+  --color-active: #f0f0f0;
+}
+
+.dark {
+  /* Dark Mode - Inverted with coral accent */
+  --color-primary: #1a1a19;
+  --color-secondary: #fefefe;
+  --color-background: #1a1a19;
+  --color-foreground: #fefefe;
+    --color-surface: #141413;
+    --color-muted: #7a7974;
+    --color-border: #fdfcf8;
+    --color-accent: #e0414f;
+    --color-hover: rgba(253, 252, 248, 0.1);
+    --color-active: rgba(253, 252, 248, 0.15);
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-background);
+  }
+}
+
+@layer components {
+  /* Button Components */
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    background-color: var(--color-primary);
+    color: var(--color-foreground);
+    border: 1px solid var(--color-border);
+    focus-ring-color: var(--color-accent);
+    focus-ring-offset-color: var(--color-background);
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--color-hover);
+  }
+  
+  .btn-primary:active {
+    background-color: var(--color-active);
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    background-color: var(--color-surface);
+    color: var(--color-foreground);
+    border: 1px solid var(--color-border);
+    focus-ring-color: var(--color-accent);
+    focus-ring-offset-color: var(--color-background);
+  }
+  
+  .btn-secondary:hover {
+    background-color: var(--color-hover);
+  }
+  
+  .btn-secondary:active {
+    background-color: var(--color-active);
+  }
+  
+  .btn-ghost {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    background-color: transparent;
+    color: var(--color-foreground);
+    border: none;
+    focus-ring-color: var(--color-accent);
+    focus-ring-offset-color: var(--color-background);
+  }
+  
+  .btn-ghost:hover {
+    background-color: var(--color-hover);
+  }
+  
+  .btn-ghost:active {
+    background-color: var(--color-active);
+  }
+  
+  .btn-outline {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    background-color: transparent;
+    color: var(--color-foreground);
+    border: 1px solid var(--color-border);
+    focus-ring-color: var(--color-accent);
+    focus-ring-offset-color: var(--color-background);
+  }
+  
+  .btn-outline:hover {
+    background-color: var(--color-hover);
+  }
+  
+  .btn-outline:active {
+    background-color: var(--color-active);
+  }
+
+  .btn-accent {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    background-color: var(--color-accent);
+    color: white;
+    border: 1px solid var(--color-accent);
+    focus-ring-color: var(--color-accent);
+    focus-ring-offset-color: var(--color-background);
+  }
+  
+  .btn-accent:hover {
+    background-color: #c73641;
+  }
+  
+  .btn-accent:active {
+    background-color: #b32d38;
+  }
+
+  /* Theme Toggle Button */
+  .theme-toggle {
+    @apply p-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    background-color: var(--color-surface);
+    color: var(--color-foreground);
+    border: 1px solid var(--color-border);
+    focus-ring-color: var(--color-accent);
+    focus-ring-offset-color: var(--color-background);
+  }
+  
+  .theme-toggle:hover {
+    background-color: var(--color-hover);
+  }
+  
+  .theme-toggle:active {
+    background-color: var(--color-active);
+  }
+
+  /* Card Components */
+  .card {
+    @apply rounded-lg p-6 shadow-sm;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+  
+  .card-compact {
+    @apply rounded-lg p-4 shadow-sm;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+
+  /* Badge Components */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    border: 1px solid var(--color-border);
+  }
+  
+  .badge-primary {
+    background-color: var(--color-primary);
+    color: var(--color-foreground);
+  }
+  
+  .badge-secondary {
+    background-color: var(--color-surface);
+    color: var(--color-foreground);
+  }
+
+  .badge-accent {
+    background-color: var(--color-accent);
+    color: white;
+    border: 1px solid var(--color-accent);
+  }
+
+  /* Input Components */
+  .input {
+    @apply w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    background-color: var(--color-surface);
+    color: var(--color-foreground);
+    border: 1px solid var(--color-border);
+    focus-ring-color: var(--color-accent);
+    focus-ring-offset-color: var(--color-background);
+  }
+  
+  .input::placeholder {
+    color: var(--color-muted);
+  }
+
+  /* Layout Components */
+  .container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .section {
+    @apply py-12 lg:py-16;
+  }
+
+  /* Typography */
+  .heading-1 {
+    @apply text-4xl lg:text-5xl font-bold;
+    color: var(--color-foreground);
+  }
+  
+  .heading-2 {
+    @apply text-3xl lg:text-4xl font-bold;
+    color: var(--color-foreground);
+  }
+  
+  .heading-3 {
+    @apply text-2xl lg:text-3xl font-semibold;
+    color: var(--color-foreground);
+  }
+  
+  .body-large {
+    @apply text-lg;
+    color: var(--color-foreground);
+  }
+  
+  .body {
+    @apply text-base;
+    color: var(--color-foreground);
+  }
+  
+  .body-small {
+    @apply text-sm;
+    color: var(--color-muted);
+  }
+
+  /* Utility Classes */
+  .surface-elevated {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    @apply shadow-lg;
+  }
+  
+  .text-muted {
+    color: var(--color-muted);
+  }
+}
