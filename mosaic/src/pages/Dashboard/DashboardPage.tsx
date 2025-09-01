@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Brain, Sun, Moon, LogOut, Plus, Trash } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
-import { notesService, type Note, type CreateNoteData } from '../../lib/notesService';
+import { notesService } from '../../lib/notesService';
+import type { Note, CreateNoteData } from '../../types';
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();

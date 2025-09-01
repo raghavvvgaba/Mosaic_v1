@@ -1,28 +1,6 @@
 import { tablesDB, appwriteConfig } from './appwrite';
-import { ID, Query } from 'appwrite';
-import type { Models } from 'appwrite';
-
-// Type definition for our Note (extends Appwrite's Models.Row)
-export interface Note extends Models.Row {
-  title: string;
-  content: string;
-  userId: string;
-  tags: string[];
-}
-
-// Type for creating a new note (without auto-generated fields)
-export interface CreateNoteData {
-  title: string;
-  content: string;
-  tags?: string[];
-}
-
-// Type for updating a note
-export interface UpdateNoteData {
-  title?: string;
-  content?: string;
-  tags?: string[];
-}
+import { ID, Query, Permission, Role } from 'appwrite';
+import type { Note, CreateNoteData, UpdateNoteData } from '../types';
 
 class NotesService {
   private databaseId = appwriteConfig.databaseId;
@@ -40,7 +18,12 @@ class NotesService {
           content: noteData.content,
           userId: userId,
           tags: noteData.tags || [],
-        }
+        },
+        permissions: [
+          Permission.read(Role.user(userId)),
+          Permission.update(Role.user(userId)),
+          Permission.delete(Role.user(userId)),
+        ]
       });
       return response as unknown as Note;
     } catch (error) {

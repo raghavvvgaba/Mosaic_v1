@@ -1,4 +1,5 @@
 // Core types for Mosaic app
+import type { Models } from 'appwrite';
 
 export interface User {
   $id: string
@@ -19,17 +20,30 @@ export interface Workspace {
   updated_at: string
 }
 
-export interface Note {
-  $id: string
-  title: string
-  content: Record<string, any>  // Rich text JSON
-  canvas_data?: Record<string, any>  // Fabric.js canvas data
-  workspace_id: string
-  author_id: string
-  tags: string[]
-  is_archived: boolean
-  created_at: string
-  updated_at: string
+// Current Note interface (extends Appwrite Row for TablesDB)
+export interface Note extends Models.Row {
+  title: string;
+  content: string; // Will be upgraded to Record<string, any> for rich text later
+  userId: string;
+  tags: string[];
+  // Future fields:
+  // canvas_data?: Record<string, any>;
+  // workspace_id?: string;
+  // is_archived?: boolean;
+}
+
+// Type for creating a new note (without auto-generated fields)
+export interface CreateNoteData {
+  title: string;
+  content: string;
+  tags?: string[];
+}
+
+// Type for updating a note
+export interface UpdateNoteData {
+  title?: string;
+  content?: string;
+  tags?: string[];
 }
 
 export interface Attachment {
