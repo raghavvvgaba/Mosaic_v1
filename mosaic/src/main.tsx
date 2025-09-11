@@ -69,6 +69,21 @@ function AppRoutes() {
             <DashboardPage />
           </ProtectedRoute>
         } />
+        <Route path="dashboard/all" element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
+        <Route path="dashboard/recent" element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
+        <Route path="dashboard/favorites" element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
       </Route>
       
       {/* Catch all route - redirect to home */}
