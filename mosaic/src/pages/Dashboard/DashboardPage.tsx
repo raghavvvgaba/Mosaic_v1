@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash, Brain } from 'lucide-react';
+import { Plus, Brain } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { notesService } from '../../lib/notesService';
 import type { Note, CreateNoteData } from '../../types';
@@ -11,12 +11,12 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [newNote, setNewNote] = useState<CreateNoteData>({
     title: '',
     content: '',
     tags: []
   });
-  const [tagInput, setTagInput] = useState('');
   const TITLE_LIMIT = 120;
   const [search, setSearch] = useState('');
   const [activeTagFilters, setActiveTagFilters] = useState<string[]>([]);
@@ -28,6 +28,20 @@ export default function DashboardPage() {
       loadNotes();
     }
   }, [user]);
+
+  // ESC key handler for closing modal
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showCreateForm) {
+        setShowCreateForm(false);
+      }
+    };
+
+    if (showCreateForm) {
+      document.addEventListener('keydown', handleEscKey);
+      return () => document.removeEventListener('keydown', handleEscKey);
+    }
+  }, [showCreateForm]);
 
   const loadNotes = async () => {
     if (!user) return;
@@ -48,78 +62,53 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!user || !newNote.title.trim() || !newNote.content.trim()) return;
 
+    setIsCreating(true);
     try {
-      const createdNote = await notesService.createNote(user.$id, newNote);
-      setNotes([createdNote, ...notes]);
+      const noteData: CreateNoteData = {
+        title: newNote.title.trim(),
+        content: newNote.content.trim(),
+        tags: newNote.tags || []
+      };
+      
+      await notesService.createNote(user.$id, noteData);
       setNewNote({ title: '', content: '', tags: [] });
-      setTagInput('');
       setShowCreateForm(false);
+      await loadNotes(); // Refresh the notes list
     } catch (err) {
       setError('Failed to create note');
       console.error(err);
+    } finally {
+      setIsCreating(false);
     }
   };
 
-  const addTag = (raw?: string) => {
-    const source = typeof raw === 'string' ? raw : tagInput;
-    const pieces = source.split(/[,]/).map(p => p.trim()).filter(Boolean);
-    if (!pieces.length) return;
-    const uniqueNew = pieces.filter(p => !(newNote.tags || []).includes(p));
-    if (uniqueNew.length) {
-      setNewNote({ ...newNote, tags: [...(newNote.tags || []), ...uniqueNew] });
-    }
-    setTagInput('');
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setNewNote({
-      ...newNote,
-      tags: (newNote.tags || []).filter(tag => tag !== tagToRemove)
-    });
-  };
-
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Add tag on Enter, Comma, Tab
-    if (['Enter', 'Tab'].includes(e.key) || (e.key === ',')) {
-      if (tagInput.trim()) {
-        e.preventDefault();
-        addTag();
-      }
-    } else if (e.key === 'Backspace' && !tagInput) {
-      // Remove last tag when backspacing on empty input
-      const current = newNote.tags || [];
-      if (current.length) {
-        e.preventDefault();
-        removeTag(current[current.length - 1]);
-      }
-    }
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
   };
 
   const handleDeleteNote = async (noteId: string) => {
-    if (!confirm('Are you sure you want to delete this note?')) return;
-
+    if (!user) return;
+    
     try {
       await notesService.deleteNote(noteId);
-      setNotes(notes.filter(note => note.$id !== noteId));
+      await loadNotes(); // Refresh the notes list
     } catch (err) {
       setError('Failed to delete note');
       console.error(err);
     }
   };
 
-
-
-  // Derived data helpers
-  const allTags = Array.from(new Set(notes.flatMap(n => n.tags))).sort();
-
-  const stripHtml = (html: string) => {
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    return div.textContent || div.innerText || '';
-  };
+  // Get unique tags from all notes
+  const allTags = Array.from(new Set(notes.flatMap(note => note.tags || [])));
 
   const toggleTagFilter = (tag: string) => {
-    setActiveTagFilters(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+    setActiveTagFilters(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
   };
 
   const clearFilters = () => {
@@ -127,72 +116,65 @@ export default function DashboardPage() {
     setSearch('');
   };
 
+  // Filter and search notes
   const visibleNotes = notes.filter(note => {
-    if (activeTagFilters.length && !activeTagFilters.every(t => note.tags.includes(t))) return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      const text = (note.title + ' ' + stripHtml(note.content) + ' ' + note.tags.join(' ')).toLowerCase();
-      if (!text.includes(q)) return false;
-    }
-    return true;
+    const matchesSearch = search === '' || 
+      note.title.toLowerCase().includes(search.toLowerCase()) ||
+      stripHtml(note.content).toLowerCase().includes(search.toLowerCase());
+    
+    const matchesTags = activeTagFilters.length === 0 || 
+      activeTagFilters.some(tag => note.tags?.includes(tag));
+    
+    return matchesSearch && matchesTags;
   });
 
-  // Close modal with Escape
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showCreateForm) setShowCreateForm(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showCreateForm]);
+  if (!user) {
+    return <div>Please log in to access your notes.</div>;
+  }
 
   return (
-    <div className="container py-8">
-        {/* Actions & Search */}
-        <div className="mb-6 flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <h2 className="heading-2">Dashboard</h2>
-              {notes.length > 0 && (
-                <span className="px-2 py-1 text-xs rounded bg-accent/10 text-accent font-medium">{notes.length} notes</span>
-              )}
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-              <div className="relative flex-1 sm:min-w-[260px]">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search notes, content, tags..."
-                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
-                />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs">⌘K</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowCreateForm(true)}
-                  className="btn-accent flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">New Note</span>
-                </button>
-                { (activeTagFilters.length || search) && (
-                  <button onClick={clearFilters} className="btn-secondary text-xs px-3">Reset</button>
-                )}
-              </div>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="heading-1 mb-2">Your Second Brain</h1>
+            <p className="text-muted">Capture, connect, and cultivate your ideas</p>
           </div>
-          {/* Tag Filters (collapsible on mobile) */}
-          {allTags.length > 0 && (
-            <div className="flex flex-wrap gap-2 items-center">
-              <button
-                type="button"
-                onClick={() => setShowFiltersMobile(!showFiltersMobile)}
-                className="md:hidden px-3 py-1.5 rounded bg-muted text-xs text-muted-foreground hover:text-foreground"
-              >
-                {showFiltersMobile ? 'Hide Tags' : 'Show Tags'}
-              </button>
-              <div className={`flex flex-wrap gap-2 ${showFiltersMobile ? 'block' : 'hidden md:flex'}`}>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="btn-accent flex items-center gap-2 shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            New Note
+          </button>
+        </div>
+
+        {/* Search and Filter Controls */}
+        <div className="mb-8 space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Search notes..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/40"
+              />
+            </div>
+            <button
+              onClick={() => setShowFiltersMobile(!showFiltersMobile)}
+              className="md:hidden btn-secondary"
+            >
+              Filters {activeTagFilters.length > 0 && `(${activeTagFilters.length})`}
+            </button>
+          </div>
+          
+          {/* Tag Filters */}
+          {(showFiltersMobile || window.innerWidth >= 768) && allTags.length > 0 && (
+            <div className="bg-surface/60 rounded-lg p-4 border border-border/60">
+              <h3 className="text-sm font-medium mb-3 text-muted-foreground">Filter by tags:</h3>
+              <div className="flex flex-wrap gap-2">
                 {allTags.map(tag => {
                   const active = activeTagFilters.includes(tag);
                   return (
@@ -217,120 +199,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Create Note Form (Modal) */}
-        {showCreateForm && (
-          <div className="fixed inset-0 z-40 flex items-start justify-center p-6 overflow-y-auto">
-            <div className="absolute inset-0 bg-background/70 backdrop-blur-sm animate-fade-in" onClick={() => setShowCreateForm(false)} />
-            <div className="relative w-full max-w-5xl bg-surface border border-border rounded-xl shadow-xl p-6 md:p-8 z-50 animate-scale-in">
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <h3 className="heading-3 mb-1">Create New Note</h3>
-                  <p className="text-sm text-muted">Capture a thought, idea, or resource. Use the rich editor for structure.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
-                  aria-label="Close create note form"
-                >
-                  ✕
-                </button>
-              </div>
-              <form onSubmit={handleCreateNote} className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-3">
-                  <div className="md:col-span-2 space-y-6">
-                    <div>
-                      <label className="block body-small mb-2">Title</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={newNote.title}
-                          onChange={(e) => setNewNote({ ...newNote, title: e.target.value.slice(0, TITLE_LIMIT) })}
-                          className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/40 text-lg font-medium tracking-tight"
-                          placeholder="e.g. Idea about spaced repetition system..."
-                          required
-                        />
-                        <span className={`absolute bottom-1 right-2 text-[10px] ${newNote.title.length >= TITLE_LIMIT ? 'text-accent' : 'text-muted'} font-medium`}>{newNote.title.length}/{TITLE_LIMIT}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="body-small mb-2 flex items-center justify-between">
-                        <span>Content</span>
-                        <span className="text-xs text-muted">Use / for quick actions (coming soon)</span>
-                      </label>
-                      <div className="rounded-lg border border-border focus-within:ring-2 focus-within:ring-accent/40 bg-background/60">
-                        <RichTextEditor
-                          content={newNote.content}
-                          onChange={(content) => setNewNote({ ...newNote, content })}
-                          placeholder="Start writing your note..."
-                          className="min-h-[180px]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block body-small mb-2">Tags</label>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {(newNote.tags || []).map((tag, index) => (
-                          <span
-                            key={index}
-                            className="group px-2 py-1 bg-accent/10 text-accent rounded-full text-xs flex items-center gap-1 pr-2 border border-accent/20 hover:bg-accent/15 transition"
-                          >
-                            {tag}
-                            <button
-                              type="button"
-                              onClick={() => removeTag(tag)}
-                              className="opacity-70 group-hover:opacity-100 hover:text-accent/80"
-                              aria-label={`Remove ${tag} tag`}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                      <input
-                        type="text"
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyDown={handleTagKeyDown}
-                        className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
-                        placeholder="Type tag and press Enter, Tab, or Comma"
-                      />
-                      <p className="mt-1 text-[11px] text-muted">Organize with 1-3 short tags (e.g. research, idea, reference).</p>
-                    </div>
-                    <div className="rounded-lg border border-dashed border-border/60 p-4 text-center text-xs text-muted">
-                      <p className="mb-1 font-medium text-foreground/80">Coming Soon</p>
-                      <p>Attach files • Link references • AI summaries</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-border/60">
-                  <div className="text-xs text-muted order-2 sm:order-1">
-                    Press <span className="px-1 py-0.5 rounded bg-muted text-foreground/80">Esc</span> to cancel
-                  </div>
-                  <div className="flex gap-2 order-1 sm:order-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateForm(false)}
-                      className="btn-secondary"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn-accent"
-                      disabled={!newNote.title.trim() || !newNote.content.trim()}
-                    >
-                      Create Note
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
         {/* Notes List */}
         {loading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -352,18 +220,6 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        ) : notes.length === 0 ? (
-          <div className="text-center py-16 border-2 border-dashed border-border rounded-xl">
-            <Brain className="h-16 w-16 text-muted mx-auto mb-6" />
-            <h3 className="heading-3 mb-3">Start Building Your Second Brain</h3>
-            <p className="text-muted mb-6 max-w-md mx-auto">Notes you capture appear here. Organize with tags, highlight insights, and connect ideas over time.</p>
-            <button
-              onClick={() => setShowCreateForm(true)}
-              className="btn-accent"
-            >
-              Create Your First Note
-            </button>
-          </div>
         ) : visibleNotes.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-border rounded-xl">
             <h3 className="heading-3 mb-2">No matches</h3>
@@ -371,45 +227,100 @@ export default function DashboardPage() {
             {(activeTagFilters.length || search) && (
               <button onClick={clearFilters} className="btn-secondary text-xs">Reset Filters</button>
             )}
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="btn-accent"
+            >
+              Create a new note
+            </button>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {visibleNotes.map((note) => {
-              const preview = stripHtml(note.content).slice(0, 180) + (stripHtml(note.content).length > 180 ? '…' : '');
-              return (
-                <div
-                  key={note.$id}
-                  className="group relative rounded-xl border border-border bg-surface/80 hover:bg-surface shadow-sm hover:shadow-md transition-all p-5 flex flex-col gap-4 overflow-hidden"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-semibold tracking-tight text-foreground leading-snug line-clamp-2 group-hover:text-accent transition-colors">{note.title}</h3>
-                    <button
-                      onClick={() => handleDeleteNote(note.$id)}
-                      className="opacity-60 hover:opacity-100 hover:text-accent transition-colors p-1 rounded"
-                      title="Delete note"
-                    >
-                      <Trash className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <p className="text-sm text-muted leading-relaxed line-clamp-4">{preview || 'No content yet.'}</p>
-                  <div className="mt-auto flex items-center justify-between text-[11px] text-muted pt-2 border-t border-border/60">
-                    <span>{new Date(note.$createdAt).toLocaleDateString()}</span>
-                    {note.tags.length > 0 && (
-                      <div className="flex gap-1 flex-wrap justify-end max-w-[70%]">
-                        {note.tags.slice(0, 3).map((tag, index) => (
-                          <span key={index} className="px-1.5 py-0.5 bg-accent/10 text-accent rounded-full text-[10px] font-medium">
-                            {tag}
-                          </span>
-                        ))}
-                        {note.tags.length > 3 && (
-                          <span className="text-[10px]">+{note.tags.length - 3}</span>
-                        )}
-                      </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {visibleNotes.map((note) => (
+              <div key={note.$id} className="group rounded-lg border border-border/60 bg-surface/40 hover:bg-surface/60 p-5 transition-all hover:shadow-md hover:border-border">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="font-semibold text-lg leading-tight line-clamp-2 group-hover:text-accent transition-colors">
+                    {note.title}
+                  </h3>
+                  <button
+                    onClick={() => handleDeleteNote(note.$id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-accent transition-all"
+                    aria-label="Delete note"
+                  >
+                    ×
+                  </button>
+                </div>
+                <p className="text-muted text-sm line-clamp-3 mb-4 leading-relaxed">
+                  {stripHtml(note.content)}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(note.$createdAt).toLocaleDateString()}
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(note.tags || []).slice(0, 2).map((tag, index) => (
+                      <span key={index} className="px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-full border border-accent/20">
+                        {tag}
+                      </span>
+                    ))}
+                    {(note.tags || []).length > 2 && (
+                      <span className="text-xs text-muted-foreground">+{(note.tags || []).length - 2}</span>
                     )}
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Create Note Modal */}
+        {showCreateForm && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-background border border-border rounded-2xl shadow-xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-end px-4 py-3 border-b border-border shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                  aria-label="Close create note form"
+                >
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleCreateNote} className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <RichTextEditor
+                    content={newNote.content}
+                    onChange={(content) => setNewNote({ ...newNote, content })}
+                    onTitleChange={(title) => setNewNote({ ...newNote, title: title.slice(0, TITLE_LIMIT) })}
+                    placeholder="Start with a heading..."
+                    className="flex-1"
+                    unified={true}
+                  />
+                </div>
+                <div className="px-4 py-3 border-t border-border bg-muted/20 shrink-0">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs ${newNote.title.length >= TITLE_LIMIT ? 'text-accent' : 'text-muted-foreground'} font-medium`}>
+                      Title: {newNote.title.length}/{TITLE_LIMIT}
+                    </span>
+                    <button
+                      type="submit"
+                      disabled={!newNote.title.trim() || !newNote.content.trim() || isCreating}
+                      className="px-6 py-2.5 rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm font-medium flex items-center justify-center gap-2"
+                    >
+                      {isCreating ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        'Create Note'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
@@ -421,6 +332,7 @@ export default function DashboardPage() {
         >
           <Plus className="h-6 w-6" />
         </button>
+      </div>
     </div>
   );
 }
