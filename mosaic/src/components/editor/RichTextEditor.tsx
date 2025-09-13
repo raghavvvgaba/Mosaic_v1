@@ -259,6 +259,15 @@ export default function RichTextEditor({
     ],
     content,
     onUpdate: ({ editor }) => {
+      // Enforce: first block must always be H1 in unified mode
+      if (unified) {
+        const firstNode = editor.state.doc.childCount > 0 ? editor.state.doc.child(0) : null;
+        const isH1 = !!firstNode && firstNode.type.name === 'heading' && firstNode.attrs.level === 1;
+        if (!isH1) {
+          // Move selection to start and set to H1 (avoid toggle-off behavior)
+          editor.chain().setTextSelection(1).focus().toggleHeading({ level: 1 }).run();
+        }
+      }
       const html = editor.getHTML();
       onChange(html);
       
@@ -308,6 +317,17 @@ export default function RichTextEditor({
         if (isMod && (event as KeyboardEvent).key.toLowerCase() === 'k') {
           setShowLinkDialog(true);
           return true;
+        }
+        // Prevent demoting the first H1 title to paragraph via Backspace at the start
+        if (unified && (event as KeyboardEvent).key === 'Backspace') {
+          const { state } = editor;
+          const { $from } = state.selection;
+          const firstNode = state.doc.childCount > 0 ? state.doc.child(0) : null;
+          const inTitle = !!firstNode && $from.parent === firstNode;
+          if (inTitle && $from.parentOffset === 0) {
+            // Block the default behavior (which would convert heading to paragraph)
+            return true;
+          }
         }
         return false;
       },
@@ -381,17 +401,66 @@ export default function RichTextEditor({
     return align ?? 'left';
   };
 
+  // Helper to detect if selection is inside the first block (title) in unified mode
+  const isInTitle = (): boolean => {
+    if (!editor || !unified) return false;
+    try {
+      const firstNode = editor.state.doc.childCount > 0 ? editor.state.doc.child(0) : null;
+      return !!firstNode && editor.state.selection.$from.parent === firstNode;
+    } catch (_e) {
+      return false;
+    }
+  };
+
   return (
     <div className={`rich-text-editor ${className || ''} flex flex-col h-full ${unified ? 'unified-mode' : ''}`}>
       {/* Compact Toolbar */}
       <div className="border-b border-border bg-muted/30 px-4 py-2 shrink-0">
         <div className="flex items-center flex-wrap gap-1">
           {/* Text Styles */}
-          <IconButton icon={<Type size={16} />} label="Text" isActive={editor.isActive('paragraph') && !editor.isActive('bulletList') && !editor.isActive('orderedList') && !editor.isActive('taskList')} onClick={() => editor.chain().focus().setParagraph().run()} />
-          <IconButton icon={<Heading1 size={16} />} label="Heading 1" isActive={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} />
-          <IconButton icon={<Heading2 size={16} />} label="Heading 2" isActive={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} />
-          <IconButton icon={<Heading3 size={16} />} label="Heading 3" isActive={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} />
-          <IconButton icon={<Quote size={16} />} label="Quote" isActive={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} />
+          <IconButton 
+            icon={<Type size={16} />} 
+            label="Text" 
+            isActive={editor.isActive('paragraph') && !editor.isActive('bulletList') && !editor.isActive('orderedList') && !editor.isActive('taskList')} 
+            onClick={() => editor.chain().focus().setParagraph().run()} 
+            disabled={isInTitle()}
+          />
+          <IconButton 
+            icon={<Heading1 size={16} />} 
+            label="Heading 1" 
+            isActive={editor.isActive('heading', { level: 1 })} 
+            onClick={() => {
+              if (isInTitle()) {
+                // If we're in the title, ensure it's H1 but never toggle it off
+                if (!editor.isActive('heading', { level: 1 })) {
+                  editor.chain().focus().toggleHeading({ level: 1 }).run();
+                }
+              } else {
+                editor.chain().focus().toggleHeading({ level: 1 }).run();
+              }
+            }}
+          />
+          <IconButton 
+            icon={<Heading2 size={16} />} 
+            label="Heading 2" 
+            isActive={editor.isActive('heading', { level: 2 })} 
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} 
+            disabled={isInTitle()}
+          />
+          <IconButton 
+            icon={<Heading3 size={16} />} 
+            label="Heading 3" 
+            isActive={editor.isActive('heading', { level: 3 })} 
+            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} 
+            disabled={isInTitle()}
+          />
+          <IconButton 
+            icon={<Quote size={16} />} 
+            label="Quote" 
+            isActive={editor.isActive('blockquote')} 
+            onClick={() => editor.chain().focus().toggleBlockquote().run()} 
+            disabled={isInTitle()}
+          />
 
           <div className="w-px h-6 bg-border mx-1" />
 
@@ -405,9 +474,9 @@ export default function RichTextEditor({
           <div className="w-px h-6 bg-border mx-1" />
 
           {/* Lists */}
-          <IconButton icon={<List size={16} />} label="Bullet list" isActive={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} />
-          <IconButton icon={<ListOrdered size={16} />} label="Numbered list" isActive={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
-          <IconButton icon={<CheckSquare size={16} />} label="Task list" isActive={editor.isActive('taskList')} onClick={() => editor.chain().focus().toggleTaskList().run()} />
+          <IconButton icon={<List size={16} />} label="Bullet list" isActive={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} disabled={isInTitle()} />
+          <IconButton icon={<ListOrdered size={16} />} label="Numbered list" isActive={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} disabled={isInTitle()} />
+          <IconButton icon={<CheckSquare size={16} />} label="Task list" isActive={editor.isActive('taskList')} onClick={() => editor.chain().focus().toggleTaskList().run()} disabled={isInTitle()} />
 
           <div className="w-px h-6 bg-border mx-1" />
 
@@ -606,7 +675,12 @@ export default function RichTextEditor({
       )}
 
       {/* Floating Menu for quick block insert at paragraph start */}
-      <FloatingMenuC editor={editor} tippyOptions={{ duration: 100 }} className="flex items-center gap-1 bg-background border border-border rounded-lg shadow-sm p-1">
+      <FloatingMenuC 
+        editor={editor} 
+        tippyOptions={{ duration: 100 }} 
+        shouldShow={() => !isInTitle()} 
+        className="flex items-center gap-1 bg-background border border-border rounded-lg shadow-sm p-1"
+      >
         <IconButton icon={<Heading1 size={14} />} label="H1" isActive={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} />
         <IconButton icon={<Heading2 size={14} />} label="H2" isActive={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} />
         <IconButton icon={<Heading3 size={14} />} label="H3" isActive={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} />
