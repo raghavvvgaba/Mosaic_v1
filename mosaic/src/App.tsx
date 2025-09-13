@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -7,6 +7,8 @@ import './App.css';
 
 function App() {
   const { loading, user } = useAuth();
+  const location = useLocation();
+  const isEditorRoute = location.pathname.startsWith('/notes');
 
   if (loading) {
     return (
@@ -42,31 +44,33 @@ function App() {
 
       {/* Main content area with offset for sidebar */}
       <div className="ml-64 min-h-screen">
-        {/* Top search bar */}
-        <div className="sticky top-0 z-20 bg-surface/80 backdrop-blur-sm border-b border-border p-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search notes, content, tags..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/40"
-              />
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        {/* Top search bar - hidden on full-screen editor routes */}
+        {!isEditorRoute && (
+          <div className="sticky top-0 z-20 bg-surface/80 backdrop-blur-sm border-b border-border p-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search notes, content, tags..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/40"
                 />
-              </svg>
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Main content area - this is where route content will render */}
         <main className="flex-1">

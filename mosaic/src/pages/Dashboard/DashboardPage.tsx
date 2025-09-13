@@ -1,23 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Plus, Brain } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notesService } from '../../lib/notesService';
-import type { Note, CreateNoteData } from '../../types';
-import RichTextEditor from '../../components/editor/RichTextEditor';
+import type { Note } from '../../types';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newNote, setNewNote] = useState<CreateNoteData>({
-    title: '',
-    content: '',
-    tags: []
-  });
-  const TITLE_LIMIT = 120;
   const [search, setSearch] = useState('');
   const [activeTagFilters, setActiveTagFilters] = useState<string[]>([]);
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
@@ -29,19 +22,7 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  // ESC key handler for closing modal
-  useEffect(() => {
-    const handleEscKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && showCreateForm) {
-        setShowCreateForm(false);
-      }
-    };
-
-    if (showCreateForm) {
-      document.addEventListener('keydown', handleEscKey);
-      return () => document.removeEventListener('keydown', handleEscKey);
-    }
-  }, [showCreateForm]);
+  // No modal now; full-screen editor page is used.
 
   const loadNotes = async () => {
     if (!user) return;
@@ -58,29 +39,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCreateNote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !newNote.title.trim() || !newNote.content.trim()) return;
-
-    setIsCreating(true);
-    try {
-      const noteData: CreateNoteData = {
-        title: newNote.title.trim(),
-        content: newNote.content.trim(),
-        tags: newNote.tags || []
-      };
-      
-      await notesService.createNote(user.$id, noteData);
-      setNewNote({ title: '', content: '', tags: [] });
-      setShowCreateForm(false);
-      await loadNotes(); // Refresh the notes list
-    } catch (err) {
-      setError('Failed to create note');
-      console.error(err);
-    } finally {
-      setIsCreating(false);
-    }
-  };
+  // Creation handled in full-screen editor; no inline create here.
 
   const stripHtml = (html: string) => {
     const tmp = document.createElement('div');
@@ -142,7 +101,7 @@ export default function DashboardPage() {
             <p className="text-muted">Capture, connect, and cultivate your ideas</p>
           </div>
           <button
-            onClick={() => setShowCreateForm(true)}
+            onClick={() => navigate('/notes/new')}
             className="btn-accent flex items-center gap-2 shrink-0"
           >
             <Plus className="h-4 w-4" />
@@ -228,7 +187,7 @@ export default function DashboardPage() {
               <button onClick={clearFilters} className="btn-secondary text-xs">Reset Filters</button>
             )}
             <button
-              onClick={() => setShowCreateForm(true)}
+              onClick={() => navigate('/notes/new')}
               className="btn-accent"
             >
               Create a new note
@@ -237,13 +196,17 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {visibleNotes.map((note) => (
-              <div key={note.$id} className="group rounded-lg border border-border/60 bg-surface/40 hover:bg-surface/60 p-5 transition-all hover:shadow-md hover:border-border">
+              <div
+                key={note.$id}
+                className="group rounded-lg border border-border/60 bg-surface/40 hover:bg-surface/60 p-5 transition-all hover:shadow-md hover:border-border cursor-pointer"
+                onClick={() => navigate(`/notes/${note.$id}`)}
+              >
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="font-semibold text-lg leading-tight line-clamp-2 group-hover:text-accent transition-colors">
                     {note.title}
                   </h3>
                   <button
-                    onClick={() => handleDeleteNote(note.$id)}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteNote(note.$id); }}
                     className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-accent transition-all"
                     aria-label="Delete note"
                   >
@@ -273,60 +236,11 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Create Note Modal */}
-        {showCreateForm && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-background border border-border rounded-2xl shadow-xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
-              <div className="flex items-center justify-end px-4 py-3 border-b border-border shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
-                  aria-label="Close create note form"
-                >
-                  ✕
-                </button>
-              </div>
-              <form onSubmit={handleCreateNote} className="flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  <RichTextEditor
-                    content={newNote.content}
-                    onChange={(content) => setNewNote({ ...newNote, content })}
-                    onTitleChange={(title) => setNewNote({ ...newNote, title: title.slice(0, TITLE_LIMIT) })}
-                    placeholder="Start with a heading..."
-                    className="flex-1"
-                    unified={true}
-                  />
-                </div>
-                <div className="px-4 py-3 border-t border-border bg-muted/20 shrink-0">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs ${newNote.title.length >= TITLE_LIMIT ? 'text-accent' : 'text-muted-foreground'} font-medium`}>
-                      Title: {newNote.title.length}/{TITLE_LIMIT}
-                    </span>
-                    <button
-                      type="submit"
-                      disabled={!newNote.title.trim() || !newNote.content.trim() || isCreating}
-                      className="px-6 py-2.5 rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm font-medium flex items-center justify-center gap-2"
-                    >
-                      {isCreating ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        'Create Note'
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        {/* No modal editor anymore; creation handled on /notes/new */}
 
         {/* Floating New Note Button (mobile) */}
         <button
-          onClick={() => setShowCreateForm(true)}
+          onClick={() => navigate('/notes/new')}
           className="md:hidden fixed bottom-6 right-6 h-14 w-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center text-xl font-bold hover:shadow-xl active:scale-95 transition"
           aria-label="Create note"
         >
