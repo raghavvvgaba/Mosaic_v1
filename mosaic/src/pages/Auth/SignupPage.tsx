@@ -1,79 +1,86 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Brain, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useTheme } from '../../hooks/useTheme';
+import GoogleButton from '../../components/ui/GoogleButton';
+import { useToast } from '../../components/ui/Toast';
 
 export default function SignupPage() {
-  const { register } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Password strength helper
+  const getPasswordStrength = (pwd: string) => {
+    const length8 = pwd.length >= 8;
+    const length12 = pwd.length >= 12;
+    const hasLower = /[a-z]/.test(pwd);
+    const hasUpper = /[A-Z]/.test(pwd);
+    const hasNumber = /\d/.test(pwd);
+    const hasSymbol = /[^A-Za-z0-9]/.test(pwd);
+
+    let score = 0;
+    if (length8) score += 1;
+    if (length12) score += 1;
+    if (hasLower && hasUpper) score += 1;
+    if (hasNumber) score += 1;
+    if (hasSymbol) score += 1;
+    score = Math.min(4, score);
+
+    const map = [
+      { label: 'Very weak', barClass: 'bg-red-500', textClass: 'text-red-500' },
+      { label: 'Weak', barClass: 'bg-orange-500', textClass: 'text-orange-500' },
+      { label: 'Fair', barClass: 'bg-yellow-500', textClass: 'text-yellow-500' },
+      { label: 'Good', barClass: 'bg-green-500', textClass: 'text-green-600' },
+      { label: 'Strong', barClass: 'bg-green-600', textClass: 'text-green-600' },
+    ];
+
+    const info = map[score] ?? map[0];
+    const percent = (score / 4) * 100;
+    return { score, percent, ...info };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+  // Errors are communicated via toast
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      toast.error('Password must be at least 8 characters long');
       return;
     }
 
     setLoading(true);
 
     try {
-      await register(email, password, name);
+      await toast.promise(
+        register(email, password, name),
+        {
+          loading: ['Creating account...', 'Setting up your workspace'],
+          success: ['Account created', 'Welcome to Mosaic!'],
+          error: ['Registration failed', 'Please try again'],
+        }
+      );
       navigate('/dashboard'); // We'll create this later
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      // Error already shown via promise toast; keep catch to stop flow
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
-      {/* Header */}
-      <header className="border-b border-border bg-surface/80 backdrop-blur-sm">
-        <div className="container flex items-center justify-between py-4">
-          <Link to="/" className="flex items-center space-x-2">
-            <Brain className="h-8 w-8 text-accent" />
-            <h1 className="heading-3">Mosaic</h1>
-          </Link>
-          
-          <div className="flex items-center space-x-4">
-            <Link to="/login" className="btn-secondary">
-              Sign In
-            </Link>
-            <button
-              onClick={toggleTheme}
-              className="theme-toggle"
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Signup Form */}
-      <main className="container py-16">
-        <div className="max-w-md mx-auto">
+    <div className="container py-16">
+      <div className="max-w-md mx-auto">
           <div className="text-center mb-8">
             <h1 className="heading-1 mb-2">Create Your Account</h1>
             <p className="body-base text-muted">
@@ -82,6 +89,27 @@ export default function SignupPage() {
           </div>
 
           <div className="card">
+            {/* OAuth */}
+            <GoogleButton
+              onClick={() => {
+                toast.promise(
+                  loginWithGoogle(),
+                  {
+                    loading: ['Connecting to Google...', 'Redirecting to Google Login'],
+                    success: ['Redirecting...', 'Google authentication started'],
+                    error: ['Google Login failed', 'Please try again'],
+                  }
+                );
+              }}
+            />
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-6">
+              <div className="h-px bg-border flex-1" />
+              <span className="body-small text-muted">Or continue with email</span>
+              <div className="h-px bg-border flex-1" />
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="name" className="block body-small mb-2">
@@ -127,6 +155,33 @@ export default function SignupPage() {
                   required
                   minLength={8}
                 />
+                {password && (
+                  <div className="mt-2" aria-live="polite">
+                    {(() => {
+                      const s = getPasswordStrength(password);
+                      return (
+                        <>
+                          <div
+                            className="h-2 w-full rounded bg-secondary/20"
+                            role="progressbar"
+                            aria-valuemin={0}
+                            aria-valuemax={4}
+                            aria-valuenow={s.score}
+                          >
+                            <div
+                              className={`h-2 rounded transition-all duration-300 ${s.barClass}`}
+                              style={{ width: `${s.percent}%` }}
+                            />
+                          </div>
+                          <div className="mt-1 flex items-center justify-between">
+                            <span className="body-small text-muted">Password strength</span>
+                            <span className={`body-small ${s.textClass}`}>{s.label}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -142,20 +197,33 @@ export default function SignupPage() {
                   placeholder="Confirm your password"
                   required
                 />
+                {confirmPassword && (
+                  <div className="mt-1 flex items-center justify-between" aria-live="polite">
+                    <span className="body-small text-muted">Match status</span>
+                    <span className={`body-small ${password === confirmPassword ? 'text-green-600' : 'text-red-500'}`}>
+                      {password === confirmPassword ? 'Matches' : 'Doesn’t match'}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {error && (
-                <div className="text-accent text-sm bg-accent/10 border border-accent/20 rounded-lg p-3">
-                  {error}
-                </div>
-              )}
+              {/* Errors are shown via toasts */}
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full btn-accent py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={(() => {
+                  if (loading) return true;
+                  const match = password === confirmPassword;
+                  const { score } = getPasswordStrength(password);
+                  // Require at least 'Fair' (score >= 2) and matching passwords
+                  return !(match && score >= 2);
+                })()}
+                className="w-full btn-accent py-3 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                {loading ? 'Creating Account...' : 'Create Account'}
+                {loading && (
+                  <span className="h-4 w-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
+                )}
+                <span>{loading ? 'Creating Account...' : 'Create Account'}</span>
               </button>
             </form>
 
@@ -163,13 +231,12 @@ export default function SignupPage() {
               <p className="body-small text-muted">
                 Already have an account?{' '}
                 <Link to="/login" className="text-accent hover:underline">
-                  Sign in here
+                  Login here
                 </Link>
               </p>
-            </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

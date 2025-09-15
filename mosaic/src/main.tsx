@@ -3,12 +3,15 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './index.css'
 import { AuthProvider, useAuth } from './hooks/useAuth.tsx'
+import { ToastProvider } from './components/ui/Toast'
+import App from './App.tsx'
 
 // Import pages
 import LandingPage from './pages/Landing/LandingPage.tsx'
 import LoginPage from './pages/Auth/LoginPage.tsx'
 import SignupPage from './pages/Auth/SignupPage.tsx'
 import DashboardPage from './pages/Dashboard/DashboardPage.tsx'
+import NoteEditorPage from './pages/Notes/NoteEditorPage.tsx'
 
 // Protected Route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -43,29 +46,56 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/" element={
-        <PublicRoute>
-          <LandingPage />
-        </PublicRoute>
-      } />
-      <Route path="/login" element={
-        <PublicRoute>
-          <LoginPage />
-        </PublicRoute>
-      } />
-      <Route path="/signup" element={
-        <PublicRoute>
-          <SignupPage />
-        </PublicRoute>
-      } />
-      
-      {/* Protected routes */}
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <DashboardPage />
-        </ProtectedRoute>
-      } />
+      <Route path="/" element={<App />}>
+        {/* Public routes */}
+        <Route index element={
+          <PublicRoute>
+            <LandingPage />
+          </PublicRoute>
+        } />
+        <Route path="login" element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        } />
+        <Route path="signup" element={
+          <PublicRoute>
+            <SignupPage />
+          </PublicRoute>
+        } />
+        
+        {/* Protected routes */}
+        <Route path="dashboard" element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
+        <Route path="dashboard/all" element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
+        <Route path="dashboard/recent" element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
+        <Route path="dashboard/favorites" element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
+        <Route path="notes/new" element={
+          <ProtectedRoute>
+            <NoteEditorPage />
+          </ProtectedRoute>
+        } />
+        <Route path="notes/:id" element={
+          <ProtectedRoute>
+            <NoteEditorPage />
+          </ProtectedRoute>
+        } />
+      </Route>
       
       {/* Catch all route - redirect to home */}
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -77,7 +107,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
