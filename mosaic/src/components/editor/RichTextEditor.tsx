@@ -310,7 +310,7 @@ export default function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: `prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[200px] px-6 py-4 text-left ${unified ? 'unified-editor' : ''} ${className}`,
+        class: `prose-lg lg:prose-xl xl:prose-2xl mx-auto focus:outline-none min-h-[200px] px-6 py-4 text-left ${unified ? 'unified-editor' : ''} ${className}`,
       },
       handleKeyDown: (_view, event) => {
         const isMod = (event as KeyboardEvent).metaKey || (event as KeyboardEvent).ctrlKey;
@@ -697,25 +697,36 @@ export default function RichTextEditor({
       <div className="relative flex-1 overflow-auto">
         <EditorContent 
           editor={editor} 
-          className="prose prose-sm max-w-none px-6 py-4 focus:outline-none h-full focus-within:ring-0"
+          className="prose-lg lg:prose-xl xl:prose-2xl max-w-none px-6 py-4 focus:outline-none h-full focus-within:ring-0"
         />
         {unified && (
           <style dangerouslySetInnerHTML={{
             __html: `
-              .unified-editor .ProseMirror h1:first-child {
+              .unified-mode .ProseMirror {
+                font-size: 20px !important;
+              }
+              .unified-mode .ProseMirror h1:first-child {
                 font-size: 2.5rem !important;
                 font-weight: 700 !important;
                 line-height: 1.2 !important;
-                margin-bottom: 1rem !important;
-                color: var(--foreground) !important;
+                margin-bottom: 4rem !important;
+                color: var(--color-foreground) !important;
                 border: none !important;
                 padding: 0 !important;
               }
-              .unified-editor .ProseMirror h1:first-child::before {
+              .unified-mode .ProseMirror h1:first-child::before {
                 content: '' !important;
               }
-              .unified-editor .ProseMirror > *:first-child {
+              .unified-mode .ProseMirror > *:first-child {
                 margin-top: 0 !important;
+              }
+              .unified-mode .ProseMirror p {
+                line-height: 1.75 !important;
+              }
+              .unified-mode .ProseMirror h3 {
+                font-size: 1.125em !important; /* ~22.5px when body is 20px */
+                line-height: 1.4 !important;
+                font-weight: 600 !important;
               }
             `
           }} />
