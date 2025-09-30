@@ -11,7 +11,6 @@ import LandingPage from './pages/Landing/LandingPage.tsx'
 import LoginPage from './pages/Auth/LoginPage.tsx'
 import SignupPage from './pages/Auth/SignupPage.tsx'
 import DashboardPage from './pages/Dashboard/DashboardPage.tsx'
-import NoteEditorPage from './pages/Notes/NoteEditorPage.tsx'
 
 // Protected Route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -85,14 +84,14 @@ function AppRoutes() {
             <DashboardPage />
           </ProtectedRoute>
         } />
-        <Route path="notes/new" element={
+        <Route path="dashboard/new" element={
           <ProtectedRoute>
-            <NoteEditorPage />
+            <DashboardPage />
           </ProtectedRoute>
         } />
-        <Route path="notes/:id" element={
+        <Route path="dashboard/:id" element={
           <ProtectedRoute>
-            <NoteEditorPage />
+            <DashboardPage />
           </ProtectedRoute>
         } />
       </Route>

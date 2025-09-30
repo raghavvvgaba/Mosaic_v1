@@ -1,19 +1,26 @@
 import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notesService } from '../../lib/notesService';
 import type { Note } from '../../types';
+import NoteEditorPage from '../Notes/NoteEditorPage';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [activeTagFilters, setActiveTagFilters] = useState<string[]>([]);
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+
+  // Check if we're on an editor route
+  const isEditorRoute = location.pathname === '/dashboard/new' || 
+                       (location.pathname.startsWith('/dashboard/') && params.id && params.id !== 'all' && params.id !== 'recent' && params.id !== 'favorites');
 
   // Load user notes on component mount
   useEffect(() => {
@@ -91,6 +98,11 @@ export default function DashboardPage() {
     return <div>Please log in to access your notes.</div>;
   }
 
+  // If we're on an editor route, render the NoteEditorPage
+  if (isEditorRoute) {
+    return <NoteEditorPage />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-4 py-8">
@@ -101,7 +113,7 @@ export default function DashboardPage() {
             <p className="text-muted">Capture, connect, and cultivate your ideas</p>
           </div>
           <button
-            onClick={() => navigate('/notes/new')}
+            onClick={() => navigate('/dashboard/new')}
             className="btn-accent flex items-center gap-2 shrink-0"
           >
             <Plus className="h-4 w-4" />
@@ -187,7 +199,7 @@ export default function DashboardPage() {
               <button onClick={clearFilters} className="btn-secondary text-xs">Reset Filters</button>
             )}
             <button
-              onClick={() => navigate('/notes/new')}
+              onClick={() => navigate('/dashboard/new')}
               className="btn-accent"
             >
               Create a new note
@@ -199,7 +211,7 @@ export default function DashboardPage() {
               <div
                 key={note.$id}
                 className="group rounded-lg border border-border/60 bg-surface/40 hover:bg-surface/60 p-5 transition-all hover:shadow-md hover:border-border cursor-pointer"
-                onClick={() => navigate(`/notes/${note.$id}`)}
+                onClick={() => navigate(`/dashboard/${note.$id}`)}
               >
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="font-semibold text-lg leading-tight line-clamp-2 group-hover:text-accent transition-colors">
@@ -240,7 +252,7 @@ export default function DashboardPage() {
 
         {/* Floating New Note Button (mobile) */}
         <button
-          onClick={() => navigate('/notes/new')}
+          onClick={() => navigate('/dashboard/new')}
           className="md:hidden fixed bottom-6 right-6 h-14 w-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center text-xl font-bold hover:shadow-xl active:scale-95 transition"
           aria-label="Create note"
         >

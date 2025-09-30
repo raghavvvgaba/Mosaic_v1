@@ -25,7 +25,7 @@ export default function NoteEditorPage() {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/dashboard')}
               className="btn-secondary inline-flex items-center gap-2 text-sm"
             >
               <ArrowLeft className="h-4 w-4" />

@@ -8,7 +8,13 @@ import './App.css';
 function App() {
   const { loading, user } = useAuth();
   const location = useLocation();
-  const isEditorRoute = location.pathname.startsWith('/notes');
+  const isEditorRoute = location.pathname === '/dashboard/new' || 
+                       (location.pathname.startsWith('/dashboard/') && 
+                        location.pathname !== '/dashboard' && 
+                        location.pathname !== '/dashboard/' &&
+                        !location.pathname.includes('/all') &&
+                        !location.pathname.includes('/recent') &&
+                        !location.pathname.includes('/favorites'));
 
   if (loading) {
     return (
